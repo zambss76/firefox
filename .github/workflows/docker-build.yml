@@ -17,7 +17,7 @@ env:
   # 格式为：你的用户名/镜像名
   # 例如，如果你想命名为 my-firefox，就改为：${{ github.repository_owner }}/my-firefox
   # 如果你想直接命名为 firefox，就改为：${{ github.repository_owner }}/firefox
-  IMAGE_NAME: ${{ github.repository_owner }}/firefox
+  IMAGE_NAME: ${{ github.repository_owner }}/dbfirefox
 
 jobs:
   build-and-push:
