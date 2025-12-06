@@ -13,48 +13,56 @@ RUN apk add --no-cache \
     ttf-dejavu \
     && rm -rf /var/cache/apk/*
 
-# 第二阶段：运行阶段 (Runner) - 我们只从这里开始复制
+# 第二阶段：运行阶段 (Runner)
 FROM alpine:latest
 
-# 只安装最最基础的运行时依赖
-# 注意：这里不再安装 firefox-esr 等大型包
+# 安装最基础的运行时依赖
 RUN apk add --no-cache \
-    # 基础库
     bash \
-    # Firefox 运行时可能需要的少量核心库（根据第一阶段安装情况精简）
     libstdc++ \
     gcompat \
     ttf-dejavu \
     && rm -rf /var/cache/apk/*
 
-# 从 builder 阶段精确复制我们需要的应用程序文件
-COPY --from=builder /usr/bin/firefox-esr /usr/bin/firefox-esr
+# 从 builder 阶段精确复制应用程序和库文件
+# 1. 复制 Firefox
+COPY --from=builder /usr/bin/firefox-esr /usr/bin/
 COPY --from=builder /usr/lib/firefox-esr/ /usr/lib/firefox-esr/
 COPY --from=builder /usr/share/firefox-esr/ /usr/share/firefox-esr/
 
-COPY --from=builder /usr/bin/xvfb-run /usr/bin/xvfb-run
-COPY --from=builder /usr/bin/xvfb /usr/bin/xvfb
-COPY --from=builder /usr/bin/x11vnc /usr/bin/x11vnc
-COPY --from=builder /usr/share/novnc/ /usr/share/novnc/
-COPY --from=builder /usr/bin/websockify /usr/bin/websockify
-COPY --from=builder /usr/bin/supervisord /usr/bin/supervisord
-COPY --from=builder /etc/supervisord.conf /etc/supervisord.conf
-COPY --from=builder /etc/supervisor/ /etc/supervisor/
+# 2. 复制 Xvfb 和 x11vnc
+COPY --from=builder /usr/bin/xvfb-run /usr/bin/
+COPY --from=builder /usr/bin/xvfb /usr/bin/
+COPY --from=builder /usr/bin/x11vnc /usr/bin/
+COPY --from=builder /usr/lib/libvncserver.so* /usr/lib/
 
-# 复制可能需要的库文件（这是一个常见痛点，可能需要反复调试）
+# 3. 复制 noVNC 和 websockify
+COPY --from=builder /usr/share/novnc/ /usr/share/novnc/
+COPY --from=builder /usr/bin/websockify /usr/bin/
+COPY --from=builder /usr/lib/python3.11/site-packages/websockify/ /usr/lib/python3.11/site-packages/websockify/
+
+# 4. 【关键修正】复制 Supervisor 的必要文件
+# 复制可执行文件
+COPY --from=builder /usr/bin/supervisord /usr/bin/
+# 复制 Python 包目录，这是 supervisor 的核心
+COPY --from=builder /usr/lib/python3.11/site-packages/supervisor/ /usr/lib/python3.11/site-packages/supervisor/
+# 复制默认配置文件（如果存在）
+COPY --from=builder /etc/supervisord.conf /etc/supervisord.conf 2>/dev/null || echo “默认 supervisord.conf 不存在，将使用项目中的配置”
+
+# 5. 复制可能需要的其他库（如果运行时报错缺失，需要回来补充）
 COPY --from=builder /usr/lib/ /usr/lib/
 
-# 创建用户和目录（逻辑与之前一致）
+# 创建用户、目录和符号链接
 RUN adduser -D -u 1000 firefoxuser \
     && mkdir -p /home/firefoxuser/.mozilla/firefox/default-release \
+    && mkdir -p /etc/supervisor/conf.d \ # 确保配置目录存在
     && chown -R firefoxuser:firefoxuser /home/firefoxuser \
-    # 创建必要的符号链接
     && ln -s /usr/share/novnc/vnc.html /usr/share/novnc/index.html
 
 USER firefoxuser
 WORKDIR /home/firefoxuser
 
-# 复制你自己的配置文件
+# 复制你项目中的配置文件（这会将我们上面的默认配置覆盖）
 COPY --chown=firefoxuser:firefoxuser supervisord.conf /etc/supervisor/conf.d/
 COPY --chown=firefoxuser:firefoxuser refresh.sh ./
 COPY --chown=firefoxuser:firefoxuser firefox-prefs.js ./
