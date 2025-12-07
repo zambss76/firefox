@@ -34,7 +34,6 @@ RUN ln -s /usr/lib/firefox/firefox /usr/local/bin/firefox
 
 # 复制配置文件和启动脚本
 COPY supervisord.conf /etc/supervisord.conf
-COPY fluxbox-init /root/.fluxbox/init
 COPY entrypoint.sh /entrypoint.sh
 
 # 设置noVNC首页
@@ -48,7 +47,7 @@ EXPOSE ${NOVNC_PORT:-6901} ${VNC_PORT:-5901}
 
 # 设置环境变量默认值
 ENV VNC_PASSWORD=alpine
-ENV NOVNC_PORT=7860
+ENV NOVNC_PORT=6901
 ENV VNC_PORT=5901
 ENV DISPLAY_WIDTH=1280
 ENV DISPLAY_HEIGHT=720
