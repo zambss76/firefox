@@ -1,7 +1,6 @@
 # firefox
 
 # Ultra-Lightweight Firefox with noVNC
-[![Docker Build and Push](https://github.com/YOUR-USERNAME/lightweight-firefox-novnc/actions/workflows/docker-build-push.yml/badge.svg)](https://github.com/YOUR-USERNAME/lightweight-firefox-novnc/actions)
 
 一个基于Alpine的轻量级Docker镜像，提供支持VNC密码保护的Firefox浏览器，并可通过noVNC在网页中访问。
 
