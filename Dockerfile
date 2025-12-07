@@ -2,16 +2,9 @@
 # 阶段1: 构建noVNC
 FROM alpine:latest as novnc-builder
 
-# 安装必要的工具，包括openssl
-RUN apk add --no-cache git openssl && \
+RUN apk add --no-cache git && \
     git clone --depth 1 https://github.com/novnc/noVNC.git /tmp/novnc && \
-    git clone --depth 1 https://github.com/novnc/websockify /tmp/novnc/utils/websockify && \
-    # 在构建阶段创建自签名证书
-    mkdir -p /tmp/novnc/utils/ssl && \
-    cd /tmp/novnc/utils/ssl && \
-    openssl req -x509 -nodes -newkey rsa:2048 \
-    -keyout self.pem -out self.pem -days 3650 \
-    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost"
+    git clone --depth 1 https://github.com/novnc/websockify /tmp/novnc/utils/websockify
 
 # 阶段2: 最终镜像
 FROM alpine:latest
@@ -21,7 +14,7 @@ LABEL org.opencontainers.image.description="Ultra-lightweight Firefox browser wi
 LABEL org.opencontainers.image.vendor="Your Name"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# 安装最小化软件包 - 添加openssl用于证书生成（如果需要的话）
+# 安装最小化软件包
 RUN apk add --no-cache \
     firefox \
     xvfb \
@@ -29,13 +22,12 @@ RUN apk add --no-cache \
     supervisor \
     bash \
     fluxbox \
-    openssl \
     && rm -rf /var/cache/apk/*
 
 # 创建必要的目录
 RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d /root/.vnc
 
-# 从构建阶段复制noVNC（包括SSL证书）
+# 从构建阶段复制noVNC
 COPY --from=novnc-builder /tmp/novnc /opt/novnc
 
 # 复制配置文件
