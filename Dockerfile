@@ -14,7 +14,7 @@ LABEL org.opencontainers.image.description="Ultra-lightweight Firefox browser wi
 LABEL org.opencontainers.image.vendor="Your Name"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# 安装最小化软件包
+# 安装最小化软件包 + 最小字体集
 RUN apk add --no-cache \
     firefox \
     xvfb \
@@ -22,6 +22,10 @@ RUN apk add --no-cache \
     supervisor \
     bash \
     fluxbox \
+    # 最小字体集 - 解决方框问题
+    font-misc-misc \
+    font-cursor-misc \
+    ttf-dejavu \
     && rm -rf /var/cache/apk/*
 
 # 创建必要的目录
@@ -50,6 +54,7 @@ ENV DISPLAY_HEIGHT=720
 ENV VNC_PASSWORD=changeme
 ENV VNC_PORT=5900
 ENV NOVNC_PORT=7860
+ENV LANG=en_US.UTF-8
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
