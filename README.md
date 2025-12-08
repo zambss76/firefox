@@ -61,6 +61,13 @@ services:
 volumes:
   firefox_profile:
 ```
+# .env 文件内容示例
+   VNC_PASSWORD=your_very_strong_password_here # 务必修改！
+   DISPLAY_WIDTH=1280
+   DISPLAY_HEIGHT=720
+   NOVNC_PORT=7860
+   VNC_PORT=5900
+   SHM_SIZE=1g
 
 启动后，通过浏览器访问 http://你的服务器IP:7860 即可。
 
