@@ -34,6 +34,7 @@ ENV NOVNC_PORT=7860
 
 ENV LANG=en_US.UTF-8
 
+# docker-compose.yml
 ```yaml
 version: '3.8'
 services:
