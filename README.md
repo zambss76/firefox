@@ -36,23 +36,26 @@ LANG=en_US.UTF-8
 
 ```yaml
 version: '3.8'
+
 services:
   firefox:
-    build: .
+    image: ghcr.io/goyo123321/lightweight-firefox-novnc:latest
     container_name: lightweight-firefox
     restart: unless-stopped
     ports:
-      - "${NOVNC_PORT:-7860}:7860"
-      - "${VNC_PORT:-5900}:5900"
+      - "${NOVNC_PORT:-7860}:7860"  # noVNC web界面
+      - "${VNC_PORT:-5900}:5900"    # VNC服务器端口
     environment:
-      - VNC_PASSWORD=${VNC_PASSWORD:-admin123}
+      - VNC_PASSWORD=${VNC_PASSWORD:-changeme}
       - DISPLAY_WIDTH=${DISPLAY_WIDTH:-1280}
       - DISPLAY_HEIGHT=${DISPLAY_HEIGHT:-720}
+      - NOVNC_PORT=${NOVNC_PORT:-7860}
+      - VNC_PORT=${VNC_PORT:-5900}
     shm_size: "${SHM_SIZE:-1gb}"
     volumes:
-      # 持久化Firefox配置（如书签、插件）
+      # 关键挂载点1：持久化Firefox配置文件（书签、扩展、历史记录）
       - firefox_profile:/root/.mozilla
-      # 挂载下载目录：容器内的 /root/Downloads 对应宿主机的 ./downloads 目录
+      # 关键挂载点2：持久化下载目录（将容器内Downloads映射到宿主机当前目录下的downloads文件夹）
       - ./downloads:/root/Downloads
 
 volumes:
