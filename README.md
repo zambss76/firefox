@@ -18,6 +18,15 @@ cp .env.example .env
 docker-compose up -d
 
 docker-compose.yml：用于一键部署和运行，配置了端口、环境变量和卷挂载。
+```
+# 设置环境变量
+ENV DISPLAY=:99
+ENV DISPLAY_WIDTH=1280
+ENV DISPLAY_HEIGHT=720
+ENV VNC_PASSWORD=changeme
+ENV VNC_PORT=5900
+ENV NOVNC_PORT=7860
+ENV LANG=en_US.UTF-8
 
 ```yaml
 version: '3.8'
