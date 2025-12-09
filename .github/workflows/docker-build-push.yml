@@ -1,47 +1,46 @@
-name: Build and Push Firefox Docker Image
+name: 构建 Docker 镜像
 
-# 仅手动触发，并允许自定义镜像标签
 on:
   workflow_dispatch:
     inputs:
-      image-tag:
-        description: '镜像标签 (例如: latest, v1.0)'
-        required: true
-        default: 'latest'
-        type: string
-
-# 在此定义全局环境变量，方便集中修改
-env:
-  REGISTRY: ghcr.io
-  # 🔧 【核心修改点】在这里设置你想要的镜像名！
-  # 格式为：你的用户名/镜像名
-  # 例如，如果你想命名为 my-firefox，就改为：${{ github.repository_owner }}/my-firefox
-  # 如果你想直接命名为 firefox，就改为：${{ github.repository_owner }}/firefox
-  IMAGE_NAME: ${{ github.repository_owner }}/testfirefox
+      custom_image_name:
+        description: '自定义的镜像名称（例如：myapp/firefox-novnc，留空则默认为firefox）'
+        required: false  # 由于有默认值，可以设为非必需
+        default: 'firefox'  # 关键修改：默认镜像名设为 firefox
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     steps:
-      - name: Checkout repository
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: 设置 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录到 GHCR
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: 构建并推送
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          # 使用上面定义的变量，标签支持手动输入
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image-tag }}
+            ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.custom_image_name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 输出镜像信息
+        run: |
+          echo "✅ 镜像构建并推送成功！"
+          echo "📦 镜像地址：ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.custom_image_name }}:latest"
+          echo "📥 拉取命令：docker pull ghcr.io/${{ github.repository_owner }}/${{ github.event.inputs.custom_image_name }}:latest"
