@@ -23,10 +23,7 @@ LABEL org.opencontainers.image.title="Lightweight Firefox with noVNC"
 LABEL org.opencontainers.image.description="Ultra-lightweight Firefox browser with noVNC web access and VNC password support"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# 先更新包管理器
-RUN apk update
-
-# 最小包安装：只安装最必要的包
+# 安装所有运行时依赖（仅英文字体）
 RUN apk add --no-cache \
     firefox \
     xvfb \
@@ -34,17 +31,22 @@ RUN apk add --no-cache \
     supervisor \
     bash \
     fluxbox \
-    # 最小字体集 - 基础英文字体
+    # 基础英文字体集
+    font-misc-misc \
+    font-cursor-misc \
     ttf-dejavu \
-    # 最必要的中文字体
-    font-noto-cjk \
+    # 其他常用英文字体
+    ttf-freefont \
+    ttf-liberation \
+    ttf-inconsolata \
     && rm -rf /var/cache/apk/*
 
-# 设置中文语言环境 - 使用简化的方法
-RUN apk add --no-cache musl-locales && \
-    echo "export LANG=zh_CN.UTF-8" >> /etc/profile.d/locale.sh && \
-    echo "export LANGUAGE=zh_CN:zh" >> /etc/profile.d/locale.sh && \
-    echo "export LC_ALL=zh_CN.UTF-8" >> /etc/profile.d/locale.sh
+# 设置英文语言环境
+RUN apk add --no-cache \
+    locales \
+    && echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen \
+    && locale-gen en_US.UTF-8 \
+    && rm -rf /var/cache/apk/*
 
 # 创建必要的目录结构
 RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d /root/.vnc
@@ -60,13 +62,9 @@ RUN chmod +x /usr/local/bin/start.sh
 # 设置noVNC默认跳转页面
 RUN echo '<html><head><meta http-equiv="refresh" content="0;url=vnc.html"></head><body></body></html>' > /opt/novnc/index.html
 
-# 为Firefox创建配置文件以支持中文显示
+# 为Firefox创建配置文件以支持英文显示
 RUN mkdir -p /root/.mozilla/firefox/default && \
-    echo 'pref("font.name-list.serif.zh-CN", "Noto Serif CJK SC, DejaVu Serif");' > /root/.mozilla/firefox/default/prefs.js && \
-    echo 'pref("font.name-list.sans-serif.zh-CN", "Noto Sans CJK SC, DejaVu Sans");' >> /root/.mozilla/firefox/default/prefs.js && \
-    echo 'pref("font.name-list.monospace.zh-CN", "Noto Sans Mono CJK SC, DejaVu Sans Mono");' >> /root/.mozilla/firefox/default/prefs.js && \
-    echo 'pref("intl.accept_languages", "zh-CN, en-US, en");' >> /root/.mozilla/firefox/default/prefs.js && \
-    echo 'pref("font.language.group", "zh-CN");' >> /root/.mozilla/firefox/default/prefs.js
+    echo 'pref("intl.accept_languages", "en-US, en");' > /root/.mozilla/firefox/default/prefs.js
 
 # 创建Firefox默认用户配置文件，避免首次启动向导
 RUN echo '{"HomePage":"about:blank","StartPage":"about:blank"}' > /root/.mozilla/firefox/default/user.js
