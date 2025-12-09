@@ -23,7 +23,10 @@ LABEL org.opencontainers.image.title="Lightweight Firefox with noVNC"
 LABEL org.opencontainers.image.description="Ultra-lightweight Firefox browser with noVNC web access and VNC password support"
 LABEL org.opencontainers.image.licenses="MIT"
 
-# 安装所有运行时依赖（包含中文字体）
+# 先更新包管理器
+RUN apk update
+
+# 最小包安装：只安装最必要的包
 RUN apk add --no-cache \
     firefox \
     xvfb \
@@ -31,25 +34,10 @@ RUN apk add --no-cache \
     supervisor \
     bash \
     fluxbox \
-    # 基础字体集
-    font-misc-misc \
-    font-cursor-misc \
+    # 最小字体集 - 基础英文字体
     ttf-dejavu \
-    # 中文字体
-    font-noto \
+    # 最必要的中文字体
     font-noto-cjk \
-    font-noto-extra \
-    font-noto-arabic \
-    font-noto-thai \
-    font-noto-emoji \
-    # 文泉驿中文字体
-    font-wqy-zenhei \
-    font-wqy-microhei \
-    # 其他常用字体
-    ttf-droid \
-    ttf-freefont \
-    ttf-liberation \
-    ttf-inconsolata \
     && rm -rf /var/cache/apk/*
 
 # 设置中文语言环境
@@ -75,9 +63,9 @@ RUN echo '<html><head><meta http-equiv="refresh" content="0;url=vnc.html"></head
 
 # 为Firefox创建配置文件以支持中文显示
 RUN mkdir -p /root/.mozilla/firefox/default && \
-    echo 'pref("font.name-list.serif.zh-CN", "Noto Serif CJK SC, WenQuanYi Zen Hei, DejaVu Serif");' > /root/.mozilla/firefox/default/prefs.js && \
-    echo 'pref("font.name-list.sans-serif.zh-CN", "Noto Sans CJK SC, WenQuanYi Zen Hei, DejaVu Sans");' >> /root/.mozilla/firefox/default/prefs.js && \
-    echo 'pref("font.name-list.monospace.zh-CN", "Noto Sans Mono CJK SC, WenQuanYi Zen Hei Mono, DejaVu Sans Mono");' >> /root/.mozilla/firefox/default/prefs.js && \
+    echo 'pref("font.name-list.serif.zh-CN", "Noto Serif CJK SC, DejaVu Serif");' > /root/.mozilla/firefox/default/prefs.js && \
+    echo 'pref("font.name-list.sans-serif.zh-CN", "Noto Sans CJK SC, DejaVu Sans");' >> /root/.mozilla/firefox/default/prefs.js && \
+    echo 'pref("font.name-list.monospace.zh-CN", "Noto Sans Mono CJK SC, DejaVu Sans Mono");' >> /root/.mozilla/firefox/default/prefs.js && \
     echo 'pref("intl.accept_languages", "zh-CN, en-US, en");' >> /root/.mozilla/firefox/default/prefs.js && \
     echo 'pref("font.language.group", "zh-CN");' >> /root/.mozilla/firefox/default/prefs.js
 
