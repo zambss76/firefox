@@ -87,5 +87,8 @@ RUN echo '{"HomePage":"about:blank","StartPage":"about:blank"}' > /root/.mozilla
 # 暴露端口
 EXPOSE 7860 5900
 
+# 声明挂载卷
+VOLUME /data
+
 # 启动入口
 CMD ["/usr/local/bin/start.sh"]
