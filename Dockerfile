@@ -1,26 +1,59 @@
 # ============================================================================
-# 阶段1: 构建器 - 下载并提取预编译的KasmVNC
-# 使用预编译包替代源码编译，避免编译失败，构建速度更快、更稳定。
+# 阶段1: 构建器 - 在Alpine (musl libc) 环境中编译KasmVNC
 # ============================================================================
 FROM alpine:latest AS builder
 
-# 安装下载和提取工具
-RUN apk add --no-cache wget xz
+# 1. 更新软件源并安装所有编译依赖
+# 关键：在Alpine中，部分开发包名称与通用名略有不同。
+RUN apk update && apk add --no-cache \
+    build-base \
+    cmake \
+    git \
+    # 图形和编码库
+    libjpeg-turbo-dev \
+    libpng-dev \
+    libwebp-dev \
+    # X11开发库 (Alpine包名通常以‘-dev’结尾)
+    libxtst-dev \
+    libx11-dev \
+    libxext-dev \
+    libxi-dev \
+    libxrandr-dev \
+    libxfixes-dev \
+    libxdamage-dev \
+    libxcursor-dev \
+    xorgproto \          # 提供X11协议头文件
+    # 加密和网络库
+    openssl-dev \
+    nettle-dev \
+    # 构建工具
+    libtool \
+    automake \
+    autoconf \
+    pkgconf \           # Alpine中通常叫 pkgconf，不是 pkgconfig
+    g++ \
+    # 内核头文件（某些低级库需要）
+    linux-headers
 
-# 定义 KasmVNC 版本和架构（可前往 https://github.com/kasmtech/KasmVNC/releases 查看最新版）
-ARG KASMVNC_VERSION="1.0.1"
-ARG KASMVNC_ARCH="linux_x86_64"
-
-# 下载、验证并提取官方预编译的二进制包
+# 2. 克隆并编译KasmVNC
+# 注意：我们已关闭了图形化VIEWER的编译（-DBUILD_VIEWER=OFF），并明确设置安装前缀。
 RUN cd /tmp && \
-    wget -q https://github.com/kasmtech/KasmVNC/releases/download/v${KASMVNC_VERSION}/kasmvncserver_${KASMVNC_ARCH}.tar.xz && \
-    echo "下载完成，正在提取文件..." && \
-    mkdir -p /opt/kasmvnc && \
-    tar -xJf kasmvncserver_${KASMVNC_ARCH}.tar.xz -C /opt/kasmvnc --strip-components=1 && \
-    rm kasmvncserver_${KASMVNC_ARCH}.tar.xz && \
-    echo "KasmVNC v${KASMVNC_VERSION} 预编译包已就绪."
+    git clone https://github.com/kasmtech/KasmVNC.git --depth 1 && \
+    cd KasmVNC && \
+    mkdir build && cd build && \
+    # 关键配置：指定Release模式、关闭Viewer、设置安装路径。
+    # 在Alpine上，使用默认的编译器和库。
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_VIEWER=OFF \
+        -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    # 如果服务器内存较小，可去掉 -j$(nproc) 或改为 -j2
+    make -j$(nproc) && \
+    make DESTDIR=/opt/kasmvnc install
 
+# 至此，KasmVNC已被安装到 /opt/kasmvnc/usr/local/ 目录下。
 # ============================================================================
+
 # 阶段2: 最终运行时镜像
 # ============================================================================
 FROM alpine:latest
@@ -88,15 +121,15 @@ RUN mkdir -p \
     /data/tmp \
     && chmod -R 777 /data
 
-# 从构建器阶段复制已下载的KasmVNC二进制文件
-COPY --from=builder /opt/kasmvnc/ /usr/local/
+# 从构建器阶段复制已编译的KasmVNC
+COPY --from=builder /opt/kasmvnc/usr/local/ /usr/local/
 
-# 创建KasmVNC的符号链接以便在PATH中直接使用，并确保网页资源目录存在
-RUN ln -sf /usr/local/bin/kasmvncserver /usr/bin/ && \
-    ln -sf /usr/local/bin/kasmvncpasswd /usr/bin/ && \
-    mkdir -p /usr/local/share/kasmvnc/web
+# 创建KasmVNC的符号链接以便在PATH中直接使用
+RUN ln -sf /usr/local/bin/kasmvncserver /usr/bin/ \
+    && ln -sf /usr/local/share/kasmvnc /usr/local/share/ \
+    && mkdir -p /usr/local/share/kasmvnc/web
 
-# 复制所有本地配置文件
+# 复制配置文件
 COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY start.sh /usr/local/bin/start.sh
 COPY init-storage.sh /usr/local/bin/init-storage.sh
@@ -104,7 +137,7 @@ COPY backup.sh /usr/local/bin/backup.sh
 COPY restore.sh /usr/local/bin/restore.sh
 RUN chmod +x /usr/local/bin/*.sh
 
-# 创建Firefox配置模板，将数据目录指向持久化存储
+# 创建Firefox配置模板
 RUN mkdir -p /etc/firefox/template && \
     cat > /etc/firefox/template/prefs.js << 'EOF'
 // Firefox preferences for containerized environment
@@ -124,7 +157,7 @@ user_pref("datareporting.healthreport.uploadEnabled", false);
 user_pref("toolkit.telemetry.enabled", false);
 EOF
 
-# 设置一个极简的Fluxbox菜单
+# 设置简单的Fluxbox菜单
 RUN echo '[begin] (fluxbox)' > /root/.fluxbox/menu && \
     echo '[exec] (Firefox) {firefox}' >> /root/.fluxbox/menu && \
     echo '[exec] (Terminal) {xterm}' >> /root/.fluxbox/menu && \
@@ -138,8 +171,8 @@ EXPOSE 5901
 # KasmVNC WebSocket端口 (用于网页客户端访问)
 EXPOSE 7860
 
-# 声明数据卷，用于持久化用户数据
+# 声明数据卷
 VOLUME ["/data"]
 
-# 容器启动入口为自定义脚本
-ENTRYPOINT ["/usr/local/bin/start.sh"]
+# 容器启动入口
+ENTRYPOINT ["/usr/local/bin/start.sh"
